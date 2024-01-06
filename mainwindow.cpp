@@ -12,29 +12,12 @@ MainWindow::MainWindow(QWidget* parent)
     ui->setupUi(this);
     auto scene = new Carousel(this);
     scene->setPadding(20);
+    scene->setBackground(QBrush(Qt::darkCyan));
 
     ui->graphicsView->setScene(scene);
 
-    //    auto x = scene->addRect(QRect(0, 0, 120, 250), {}, QBrush(Qt::darkGreen));
-
-    //    new QGraphicsSimpleTextItem("1", x);
-    //    new QGraphicsSimpleTextItem("2", x);
-    //    new QGraphicsSimpleTextItem("3", x);
-
-    //    scene->setForegroundBrush(QBrush(Qt::darkYellow));
-
-    //    auto timer = new QTimer(this);
-    //    connect(timer, &QTimer::timeout, this, [=] {
-    //        const auto colided = x->collidingItems();
-    //        if (!colided.isEmpty()) {
-    //            qDebug() << colided;
-    //        }
-    //    });
-    //    timer->start(100);
-
-    //    for (auto i : scene->items()) {
-    //        i->setFlags(QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable);
-    //    }
+    // scene->add(new Item("Карусель"));
+    // scene->add(new Item("Работает"));
 }
 
 MainWindow::~MainWindow()
@@ -51,7 +34,8 @@ void MainWindow::resizeEvent(QResizeEvent* event)
 
 void MainWindow::on_pushButton_clicked()
 {
-    static_cast<Carousel*>(ui->graphicsView->scene())->add();
+    static int c;
+    static_cast<Carousel*>(ui->graphicsView->scene())->add(new Item(QString::number(c++)));
 }
 
 void MainWindow::on_pushButton_2_clicked()

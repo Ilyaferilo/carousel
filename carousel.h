@@ -1,10 +1,13 @@
-#ifndef CAROUSEL_H
-#define CAROUSEL_H
+#pragma once
 
 #include "circle-list.h"
 #include <QWidget>
 #include <QGraphicsScene>
 #include <QGraphicsObject>
+#include <qbrush.h>
+
+class QPropertyAnimation;
+class QParallelAnimationGroup;
 
 class Carousel : public QGraphicsScene
 {
@@ -14,15 +17,22 @@ public:
     Carousel(QWidget* parent = nullptr);
 
     void setSceneRectangle(QRectF rect);
+    void setBackground(QBrush brush);
 
     void setActive(int itemNumber);
-    void add();
+
+    void add(QGraphicsObject* item);
+
     void reset();
 
-    void setPadding(int newPaddingREAD);
-
+    void setPadding(int newPadding);
     int padding() const;
 
+    struct ItemElement
+    {
+        QGraphicsObject* item;
+        QPropertyAnimation* moveAnimation;
+    };
 signals:
     void paddingChanged(int);
 
@@ -32,9 +42,12 @@ protected:
 private:
     void replaceItems() const;
 
-    CircleList<QGraphicsItem*> m_items;
+    CircleList<ItemElement> m_items;
     QGraphicsItem* m_centerItem;
     int m_padding{1};
+    QParallelAnimationGroup* m_groupAnimation;
+    QGraphicsRectItem* m_footer;
+    QGraphicsRectItem* m_top;
 };
 
 class Item : public QGraphicsObject
@@ -48,5 +61,3 @@ public:
     QRectF boundingRect() const override;
     void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) override;
 };
-
-#endif   // CAROUSEL_H

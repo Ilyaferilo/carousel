@@ -2,8 +2,14 @@
 #include "qpainter.h"
 #include <QGraphicsSceneWheelEvent>
 #include <QDebug>
-#include <utility>
 #include <QPropertyAnimation>
+#include <QParallelAnimationGroup>
+#include <qbrush.h>
+#include <qfontmetrics.h>
+#include <qgraphicsitem.h>
+#include <QGraphicsBlurEffect>
+#include <qpoint.h>
+#include <qpropertyanimation.h>
 #include "circle-list.h"
 
 namespace {
@@ -17,7 +23,18 @@ constexpr int itemHeight{50};
 constexpr int centerItemWidth{itemWidth + 30};
 constexpr int centerItemHeight = itemHeight * 1.1;
 
-int counter = 0;
+void updateAnimation(Carousel::ItemElement e, QPointF newPos)
+{
+    e.moveAnimation->setStartValue(e.item->pos());
+    e.moveAnimation->setEndValue(newPos);
+}
+
+QGraphicsEffect* makeBlur()
+{
+    auto blur = new QGraphicsBlurEffect();
+    blur->setBlurRadius(12);
+    return blur;
+}
 
 }   // namespace
 
@@ -50,24 +67,35 @@ public:
 
 Carousel::Carousel(QWidget* parent)
   : QGraphicsScene(parent)
+  , m_groupAnimation(new QParallelAnimationGroup(this))
+  , m_footer(new QGraphicsRectItem(QRectF(0, 500, 1500, centerItemHeight)))
+  , m_top(new QGraphicsRectItem(QRectF(0, 0, 1500, centerItemHeight)))
 {
-    setBackgroundBrush(QBrush(Qt::darkCyan));
-    const int x = 100;   // this->sceneRect().center().x();
-    for (size_t i = 0; i < 5; i++) {
-        auto it = new Item(QString::number(i));
-        m_items.push(it);
-        addItem(it);
-        it->setZValue(-1);
-        it->setPos(x, (i * itemHeight * 1.2));
-    }
-
-    counter = m_items.list().size();
-
     setSceneRect(0, 0, 200, 500);
 
     m_centerItem = new CenterItem();
+
+    // footer->setBrush(QBrush(Qt::darkCyan));
+    m_footer->setPen(Qt::NoPen);
+    m_top->setPen(Qt::NoPen);
+
+    m_footer->setGraphicsEffect(makeBlur());
+    m_top->setGraphicsEffect(makeBlur());
+
     m_centerItem->setZValue(1);
+    m_footer->setZValue(1);
+    m_top->setZValue(1);
+
     addItem(m_centerItem);
+    addItem(m_footer);
+    addItem(m_top);
+}
+
+void Carousel::setBackground(QBrush brush)
+{
+    setBackgroundBrush(brush);
+    m_footer->setBrush(brush);
+    m_top->setBrush(brush);
 }
 
 void Carousel::setSceneRectangle(QRectF rect)
@@ -77,9 +105,11 @@ void Carousel::setSceneRectangle(QRectF rect)
     const auto center = rect.center().x() - itemWidth / 2;
     m_centerItem->setPos(rect.center().x() - centerItemWidth / 2, rect.center().y() - centerItemHeight / 2);
     const auto diffY = m_centerItem->pos().y() - oldPos.y();
-    for (auto i : qAsConst(m_items.list())) {
-        i->setPos(center, i->pos().y() + diffY);
+    for (ItemElement i : qAsConst(m_items.list())) {
+        i.item->setPos(center, i.item->pos().y() + diffY);
     }
+    m_footer->setRect(0, rect.bottom() - centerItemHeight, rect.width() + itemWidth, centerItemHeight * 2);
+    m_top->setRect(0, -centerItemHeight, rect.width() + itemWidth, centerItemHeight * 2);
 }
 
 void Carousel::setActive(int itemNumber)
@@ -93,18 +123,18 @@ void Carousel::setActive(int itemNumber)
     replaceItems();
 }
 
-void Carousel::add()
+void Carousel::add(QGraphicsObject* item)
 {
-    auto it = new Item(QString::number(counter++));
-    m_items.push(it);
-    addItem(it);
-    auto a = new QPropertyAnimation(it, "pos");
-    a->setStartValue(it->pos());
-    a->setEndValue(m_centerItem->pos());
-    a->setEasingCurve(QEasingCurve::OutElastic);
-    a->setDuration(2000);
-    a->start(QAbstractAnimation::DeletionPolicy::DeleteWhenStopped);
-    connect(a, &QPropertyAnimation::finished, this, &Carousel::replaceItems);
+    addItem(item);
+    auto* a = new QPropertyAnimation(item, "pos", this);
+    m_groupAnimation->addAnimation(a);
+    m_items.push(ItemElement{item, a});
+    // a->setStartValue(item->pos());
+    // a->setEndValue(m_centerItem->pos());
+    // a->setEasingCurve(QEasingCurve::OutElastic);
+    // a->setDuration(2000);
+    // a->start(QAbstractAnimation::DeletionPolicy::DeleteWhenStopped);
+    // connect(a, &QPropertyAnimation::finished, this, &Carousel::replaceItems);
 }
 
 void Carousel::reset()
@@ -125,22 +155,27 @@ void Carousel::wheelEvent(QGraphicsSceneWheelEvent* event)
 
 void Carousel::replaceItems() const
 {
-    const auto centerX = sceneRect().center().x() - itemWidth / 2;
-
     const auto& xl = m_items.list();
-    auto itemsCount = xl.size();
+    const auto itemsCount = xl.size();
+    if (itemsCount == 0) {
+        return;
+    }
+    const auto centerX = sceneRect().center().x() - itemWidth / 2;
     int activeItem = itemsCount / 2;
     const QPointF activePoint(centerX, sceneRect().center().y() - centerItemHeight / 2 + linePenW);
-    xl[activeItem]->setPos(activePoint);
-
-    for (int i = activeItem - 1, y = activePoint.y() - (itemHeight + m_padding); i > 0;
+    updateAnimation(xl[activeItem], activePoint);
+    // xl[activeItem]->setPos(activePoint);
+    for (int i = activeItem - 1, y = activePoint.y() - (itemHeight + m_padding); i >= 0;
          --i, y -= itemHeight + m_padding) {
-        xl[i]->setPos(centerX, y);
+        updateAnimation(xl[i], QPointF(centerX, y));
+        // xl[i]->setPos(centerX, y);
     }
     for (int i = activeItem + 1, y = activePoint.y() + (itemHeight + m_padding); i < itemsCount;
          ++i, y += itemHeight + m_padding) {
-        xl[i]->setPos(centerX, y);
+        updateAnimation(xl[i], QPointF(centerX, y));
+        // xl[i]->setPos(centerX, y);
     }
+    m_groupAnimation->start();
 }
 
 Item::Item(const QString& name)
@@ -157,14 +192,17 @@ void Item::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWid
     QRectF r(0, 0, itemWidth, itemHeight);
     painter->setBrush(QBrush(Qt::darkGray));
     painter->drawRoundedRect(r, radius, radius);
-    painter->drawText(r.center(), m_name);
+    auto shift = painter->fontMetrics().size(0, m_name).width() / 2;
+    painter->drawText(r.center() - QPointF(shift, 0), m_name);
 }
 
-void Carousel::setPadding(int newPaddingREAD)
+void Carousel::setPadding(int newPadding)
 {
-    if (m_padding == newPaddingREAD)
+    const bool isNewPaddingValid = newPadding >= 1 && newPadding < 300;
+    if (m_padding == newPadding || !isNewPaddingValid) {
         return;
-    m_padding = newPaddingREAD;
+    }
+    m_padding = newPadding;
     emit paddingChanged(m_padding);
 }
 

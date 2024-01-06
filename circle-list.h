@@ -14,10 +14,10 @@ public:
     void reset()
     {
         bool rotateLeft = m_shift > 0;
-        if(rotateLeft){
+        if (rotateLeft) {
             rotateL(m_shift);
-        }else{
-            rotateR(-1*m_shift);
+        } else {
+            rotateR(-1 * m_shift);
         }
     }
 
@@ -28,22 +28,25 @@ public:
             m_list.append(std::forward<TV>(val));
         } else if (m_shift > 0) {
             m_list.insert(m_shift++, std::forward<TV>(val));
-        }else{
+        } else {
             m_list.insert(m_list.end() + m_shift, std::forward<TV>(val));
         }
     }
 
     void rotate(int count = 1)
     {
-        if(count > 0){
+        if (count > 0) {
             rotateR(count);
-        }else{
-            rotateL(-1*count);
+        } else {
+            rotateL(-1 * count);
         }
     }
 
     void rotateL(int count = 1)
     {
+        if (m_list.empty()) {
+            return;
+        }
         m_shift = (m_shift - count) % m_list.size();
         for (size_t i = 0; i < count; i++) {
             m_list.append(m_list.takeFirst());
@@ -52,6 +55,9 @@ public:
 
     void rotateR(int count = 1)
     {
+        if (m_list.empty()) {
+            return;
+        }
         m_shift = (m_shift + count) % m_list.size();
         for (size_t i = 0; i < count; i++) {
             m_list.prepend(m_list.takeLast());
