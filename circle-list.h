@@ -6,7 +6,7 @@ template<typename T>
 class CircleList
 {
 public:
-    const QList<T>& list() const
+    const QList<T>& list() const noexcept
     {
         return m_list;
     }

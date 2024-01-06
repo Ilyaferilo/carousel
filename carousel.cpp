@@ -11,6 +11,7 @@
 #include <qparallelanimationgroup.h>
 #include <qpoint.h>
 #include <qpropertyanimation.h>
+#include <QKeyEvent>
 #include "circle-list.h"
 
 namespace {
@@ -99,7 +100,7 @@ void Carousel::setSceneRectangle(QRectF rect)
     const auto center = rect.center().x() - itemWidth / 2;
     m_centerItem->setPos(rect.center().x() - centerItemWidth / 2, rect.center().y() - centerItemHeight / 2);
     const auto diffY = m_centerItem->pos().y() - oldPos.y();
-    for (ItemElement i : qAsConst(m_items.list())) {
+    for (const auto& i : qAsConst(m_items.list())) {
         i.item->setPos(center, i.item->pos().y() + diffY);
     }
     m_footer->setRect(0, rect.bottom() - centerItemHeight, rect.width() + itemWidth, centerItemHeight * 2);
@@ -119,10 +120,16 @@ void Carousel::setActive(int itemNumber)
 
 void Carousel::add(QGraphicsObject* item)
 {
+    item->setAcceptedMouseButtons(Qt::MouseButton::LeftButton);
     addItem(item);
-    auto* a = new QPropertyAnimation(item, "pos", this);
-    m_groupAnimation->addAnimation(a);
-    m_items.push(ItemElement{item, a});
+    auto* moveAnimation = new QPropertyAnimation(item, "pos", this);
+    auto* scaleAnimation = new QPropertyAnimation(item, "scale", this);
+
+    auto g = new QParallelAnimationGroup(this);
+    g->addAnimation(moveAnimation);
+    g->addAnimation(scaleAnimation);
+    m_groupAnimation->addAnimation(g);
+    m_items.push(ItemElement{item, moveAnimation, scaleAnimation});
 }
 
 void Carousel::reset()
@@ -134,25 +141,31 @@ void Carousel::reset()
 void Carousel::wheelEvent(QGraphicsSceneWheelEvent* event)
 {
     const int rotateDirection = event->delta() > 0 ? 1 : -1;
-    if (m_groupAnimation->state() == QAbstractAnimation::Running) {
-        m_rotateQueue = rotateDirection;
-        return;
-    }
     doRotate(rotateDirection);
 }
 
 void Carousel::doRotate(int count)
 {
+    if (m_groupAnimation->state() == QAbstractAnimation::Running) {
+        m_rotateQueue += count;
+        return;
+    }
     m_items.rotate(count);
     replaceItems();
 }
 
-void Carousel::updateAnimation(Carousel::ItemElement e, const QPointF newPos)
+void Carousel::updateAnimation(const Carousel::ItemElement& e, QPointF newPos, qreal scale)
 {
     e.moveAnimation->setKeyValues({});
     e.moveAnimation->setStartValue(e.item->pos());
+
+    const auto oldW = e.item->sceneBoundingRect().width();
+    newPos.rx() += (oldW - oldW * scale) / 2;
     e.moveAnimation->setEndValue(newPos);
-    if (qAbs(e.item->pos().y() - newPos.y()) > itemHeight * 3) {
+
+    e.scaleAnimation->setStartValue(e.item->scale());
+    e.scaleAnimation->setEndValue(scale);
+    if (qAbs(e.item->pos().y() - newPos.y()) > sceneRect().height() * 0.55) {
         //TODO: use QSequentialAnimationGroup gnu;
         if (e.item->pos().y() > newPos.y()) {
             e.moveAnimation->setKeyValueAt(0.5, QPointF{newPos.x(), sceneRect().bottom()});
@@ -161,6 +174,53 @@ void Carousel::updateAnimation(Carousel::ItemElement e, const QPointF newPos)
             e.moveAnimation->setKeyValueAt(0.5, QPointF{newPos.x(), sceneRect().top()});
             e.moveAnimation->setKeyValueAt(0.50001, QPointF{newPos.x(), sceneRect().bottom()});
         }
+    }
+}
+
+void Carousel::keyPressEvent(QKeyEvent* event)
+{
+    switch (event->key()) {
+    case Qt::Key_Up:
+        doRotate(1);
+        break;
+    case Qt::Key_Down:
+        doRotate(-1);
+        break;
+    default:
+        break;
+    };
+}
+
+void Carousel::mousePressEvent(QGraphicsSceneMouseEvent* event)
+{
+    if (event->button() == Qt::MouseButton::LeftButton) {
+        if (auto* item = itemAt(event->scenePos(), {})) {
+            int c = 0;
+            const auto& lst = m_items.list();
+            const auto count = lst.size();
+            for (int i = 0; i < count; i++) {
+                if (lst.at(i).item == item) {
+                    event->accept();
+                    m_items.rotate(count / 2 - i);
+                    replaceItems();
+                    return;
+                }
+            }
+        }
+        m_lastClickPos = event->scenePos();
+    }
+}
+
+void Carousel::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
+{
+    return;
+    // TODO: запомнить предыдущие позиции элементов и перемещать относительно них
+    const auto diffPoint = event->scenePos() - m_lastClickPos;
+    if (diffPoint.manhattanLength() > 3) {
+        for (const auto& i : qAsConst(m_items.list())) {
+            i.item->moveBy(0, diffPoint.y());
+        }
+        qDebug() << diffPoint.y();
     }
 }
 
@@ -174,14 +234,18 @@ void Carousel::replaceItems()
     const auto centerX = sceneRect().center().x() - itemWidth / 2;
     int activeItem = itemsCount / 2;
     const QPointF activePoint(centerX, sceneRect().center().y() - centerItemHeight / 2 + linePenW);
-    updateAnimation(xl[activeItem], activePoint);
+    updateAnimation(xl[activeItem], activePoint, 1.0);
+    qreal scale = 1 - 0.1;
     for (int i = activeItem - 1, y = activePoint.y() - (itemHeight + m_padding); i >= 0;
          --i, y -= itemHeight + m_padding) {
-        updateAnimation(xl[i], QPointF(centerX, y));
+        updateAnimation(xl[i], QPointF(centerX, y), scale);
+        scale -= 0.1;
     }
+    scale = 1 - 0.1;
     for (int i = activeItem + 1, y = activePoint.y() + (itemHeight + m_padding); i < itemsCount;
          ++i, y += itemHeight + m_padding) {
-        updateAnimation(xl[i], QPointF(centerX, y));
+        updateAnimation(xl[i], QPointF(centerX, y), scale);
+        scale -= 0.1;
     }
     m_groupAnimation->start();
 }

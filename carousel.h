@@ -42,10 +42,11 @@ private:
     {
         QGraphicsObject* item;
         QPropertyAnimation* moveAnimation;
+        QPropertyAnimation* scaleAnimation;
     };
 
     void replaceItems();
-    void updateAnimation(ItemElement e, QPointF newPos);
+    void updateAnimation(const ItemElement& e, QPointF newPos, qreal scale);
 
     CircleList<ItemElement> m_items;
     QGraphicsItem* m_centerItem;
@@ -54,6 +55,13 @@ private:
     QGraphicsRectItem* m_footer;
     QGraphicsRectItem* m_top;
     int m_rotateQueue{};
+    QPointF m_lastClickPos;
+
+    // QGraphicsScene interface
+protected:
+    void keyPressEvent(QKeyEvent* event) override;
+    void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
+    void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
 };
 
 class Item : public QGraphicsObject
