@@ -28,19 +28,24 @@ public:
     void setPadding(int newPadding);
     int padding() const;
 
-    struct ItemElement
-    {
-        QGraphicsObject* item;
-        QPropertyAnimation* moveAnimation;
-    };
 signals:
     void paddingChanged(int);
 
 protected:
     void wheelEvent(QGraphicsSceneWheelEvent* event) override;
 
+private slots:
+    void doRotate(int count);
+
 private:
-    void replaceItems() const;
+    struct ItemElement
+    {
+        QGraphicsObject* item;
+        QPropertyAnimation* moveAnimation;
+    };
+
+    void replaceItems();
+    void updateAnimation(ItemElement e, QPointF newPos);
 
     CircleList<ItemElement> m_items;
     QGraphicsItem* m_centerItem;
@@ -48,6 +53,7 @@ private:
     QParallelAnimationGroup* m_groupAnimation;
     QGraphicsRectItem* m_footer;
     QGraphicsRectItem* m_top;
+    int m_rotateQueue{};
 };
 
 class Item : public QGraphicsObject
