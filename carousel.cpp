@@ -81,8 +81,6 @@ Carousel::Carousel(QWidget* parent)
             m_rotateQueue = 0;
         }
     });
-
-    setSceneRectangle(QRectF(0, 0, 500, 800));
 }
 
 void Carousel::setBackground(QBrush brush)
@@ -105,6 +103,19 @@ void Carousel::setSceneRectangle(QRectF rect)
     }
     m_footer->setRect(0, rect.bottom() - centerItemHeight, rect.width() + itemWidth, centerItemHeight * 2);
     m_top->setRect(0, -centerItemHeight, rect.width() + itemWidth, centerItemHeight * 2);
+}
+
+void Carousel::setActiveItem(QGraphicsItem* item)
+{
+    const auto& lst = m_items.list();
+    const auto count = lst.size();
+    for (int i = 0; i < count; ++i) {
+        if (lst.at(i).item == item) {
+            m_items.rotate(count / 2 - i);
+            replaceItems();
+            return;
+        }
+    }
 }
 
 void Carousel::setActive(int itemNumber)
@@ -133,6 +144,7 @@ void Carousel::add(QGraphicsObject* item)
 
     m_groupAnimation->addAnimation(g);
     m_items.push(ItemElement{item, moveAnimation, scaleAnimation, opacityAnimation});
+    setActiveItem(focusItem());
 }
 
 void Carousel::reset()
@@ -200,16 +212,8 @@ void Carousel::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
     if (event->button() == Qt::MouseButton::LeftButton) {
         if (auto* item = itemAt(event->scenePos(), {})) {
-            const auto& lst = m_items.list();
-            const auto count = lst.size();
-            for (int i = 0; i < count; i++) {
-                if (lst.at(i).item == item) {
-                    event->accept();
-                    m_items.rotate(count / 2 - i);
-                    replaceItems();
-                    return;
-                }
-            }
+            event->accept();
+            setActiveItem(item);
         }
     }
     QGraphicsScene::mousePressEvent(event);
@@ -218,25 +222,34 @@ void Carousel::mousePressEvent(QGraphicsSceneMouseEvent* event)
 void Carousel::replaceItems()
 {
     const auto& xl = m_items.list();
-    const auto itemsCount = xl.size();
+    const int itemsCount = static_cast<int>(xl.size());
     if (itemsCount == 0) {
         return;
     }
     const auto centerX = sceneRect().center().x() - itemWidth / 2;
-    int activeItem = itemsCount / 2;
+    const int activeItem = itemsCount / 2;
     const QPointF activePoint(centerX, sceneRect().center().y() - centerItemHeight / 2 + linePenW);
     updateAnimation(xl[activeItem], activePoint, 1.0);
-    qreal scale = 1 - 0.1;
-    for (int i = activeItem - 1, y = activePoint.y() - (itemHeight + m_margin); i >= 0;
-         --i, y -= itemHeight + m_margin) {
-        updateAnimation(xl[i], QPointF(centerX, y), scale);
-        scale -= 0.1;
+    const qreal step = 0.1;
+    // go up
+    {
+        qreal scale = 1 - step;
+        qreal y = activePoint.y() - (itemHeight + m_margin);
+        for (int i = activeItem - 1; i >= 0; --i) {
+            updateAnimation(xl[i], QPointF(centerX, y), scale);
+            scale -= step;
+            y -= itemHeight + m_margin;
+        }
     }
-    scale = 1 - 0.1;
-    for (int i = activeItem + 1, y = activePoint.y() + (itemHeight + m_margin); i < itemsCount;
-         ++i, y += itemHeight + m_margin) {
-        updateAnimation(xl[i], QPointF(centerX, y), scale);
-        scale -= 0.1;
+    // go down
+    {
+        qreal scale = 1 - step;
+        qreal y = activePoint.y() + (itemHeight + m_margin);
+        for (int i = activeItem + 1; i < itemsCount; ++i) {
+            updateAnimation(xl[i], QPointF(centerX, y), scale);
+            scale -= step;
+            y += itemHeight + m_margin;
+        }
     }
     m_groupAnimation->start();
 }
@@ -248,6 +261,7 @@ void Carousel::setMargin(int newMargin)
         return;
     }
     m_margin = newMargin;
+    replaceItems();
 }
 
 int Carousel::margin() const
