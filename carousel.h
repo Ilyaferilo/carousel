@@ -12,7 +12,7 @@ class QParallelAnimationGroup;
 class Carousel : public QGraphicsScene
 {
     Q_OBJECT
-    Q_PROPERTY(int padding READ padding WRITE setPadding NOTIFY paddingChanged)
+    Q_PROPERTY(int margin READ margin WRITE setMargin)
 public:
     Carousel(QWidget* parent = nullptr);
 
@@ -25,11 +25,8 @@ public:
 
     void reset();
 
-    void setPadding(int newPadding);
-    int padding() const;
-
-signals:
-    void paddingChanged(int);
+    void setMargin(int newMargin);
+    int margin() const;
 
 protected:
     void wheelEvent(QGraphicsSceneWheelEvent* event) override;
@@ -43,6 +40,7 @@ private:
         QGraphicsObject* item;
         QPropertyAnimation* moveAnimation;
         QPropertyAnimation* scaleAnimation;
+        QPropertyAnimation* opacityAnimation;
     };
 
     void replaceItems();
@@ -50,28 +48,14 @@ private:
 
     CircleList<ItemElement> m_items;
     QGraphicsItem* m_centerItem;
-    int m_padding{1};
+    int m_margin{2};
     QParallelAnimationGroup* m_groupAnimation;
     QGraphicsRectItem* m_footer;
     QGraphicsRectItem* m_top;
     int m_rotateQueue{};
-    QPointF m_lastClickPos;
 
     // QGraphicsScene interface
 protected:
     void keyPressEvent(QKeyEvent* event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
-    void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
-};
-
-class Item : public QGraphicsObject
-{
-    Q_OBJECT
-    // QGraphicsItem interface
-
-public:
-    const QString m_name;
-    Item(const QString& name);
-    QRectF boundingRect() const override;
-    void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) override;
 };

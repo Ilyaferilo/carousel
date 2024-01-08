@@ -13,7 +13,7 @@ MainWindow::MainWindow(QWidget* parent)
 {
     ui->setupUi(this);
     auto scene = new Carousel(this);
-    scene->setPadding(20);
+    scene->setMargin(20);
     scene->setBackground(QBrush(Qt::black));
 
     ui->graphicsView->setScene(scene);
