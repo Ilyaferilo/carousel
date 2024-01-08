@@ -18,6 +18,7 @@ QRectF Item::boundingRect() const
 {
     return QRectF(-radius, -radius, itemWidth + radius, itemHeight + radius);
 }
+
 void Item::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)
 {
     QRectF r(0, 0, itemWidth, itemHeight);

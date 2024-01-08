@@ -50,6 +50,8 @@ SpacesBeforeTrailingComments: 3
 UseTab: "Never"
 ColumnLimit: 120
 BreakBeforeBraces: Custom
+SeparateDefinitionBlocks: Always
+EmptyLineBeforeAccessModifier: LogicalBlock
 BraceWrapping:
     AfterClass: "true"
     AfterControlStatement: "false"

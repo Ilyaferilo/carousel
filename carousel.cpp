@@ -240,6 +240,7 @@ void Carousel::replaceItems()
     }
     m_groupAnimation->start();
 }
+
 void Carousel::setMargin(int newMargin)
 {
     const bool isNewPaddingValid = newMargin >= 1 && newMargin < 300;
