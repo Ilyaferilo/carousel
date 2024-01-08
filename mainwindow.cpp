@@ -5,6 +5,8 @@
 #include <QGraphicsRectItem>
 #include <QTimer>
 
+#include "item.h"
+
 MainWindow::MainWindow(QWidget* parent)
   : QMainWindow(parent)
   , ui(new Ui::MainWindow)
@@ -12,12 +14,9 @@ MainWindow::MainWindow(QWidget* parent)
     ui->setupUi(this);
     auto scene = new Carousel(this);
     scene->setPadding(20);
-    scene->setBackground(QBrush(Qt::darkCyan));
+    scene->setBackground(QBrush(Qt::black));
 
     ui->graphicsView->setScene(scene);
-
-    // scene->add(new Item("Карусель"));
-    // scene->add(new Item("Работает"));
 }
 
 MainWindow::~MainWindow()
