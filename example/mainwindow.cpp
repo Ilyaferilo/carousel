@@ -36,6 +36,10 @@ MainWindow::MainWindow(QWidget* parent)
     auto scene = new Carousel(this);
     scene->setMargin(20);
     scene->setBackground(QBrush(Qt::black));
+
+    QTimer::singleShot(1, this, [this] {
+        resize(400, 800);
+    });
     ui->graphicsView->setScene(scene);
 }
 
