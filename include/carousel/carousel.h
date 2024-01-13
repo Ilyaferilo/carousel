@@ -20,7 +20,7 @@ public:
     void setBackground(QBrush brush);
 
     void setActive(int itemNumber);
-    void setActiveItem(QGraphicsItem* item);
+    void setActiveItem(QGraphicsItem* item, int indexHint = 0);
 
     void add(QGraphicsObject* item);
 

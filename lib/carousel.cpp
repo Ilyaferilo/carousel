@@ -109,11 +109,11 @@ void Carousel::setSceneRectangle(QRectF rect)
     m_footer->setRect(-10, rect.bottom() - hideHeight / 2, rect.width() + m_itemSize.width(), hideHeight);
 }
 
-void Carousel::setActiveItem(QGraphicsItem* item)
+void Carousel::setActiveItem(QGraphicsItem* item, int indexHint)
 {
     const auto& lst = m_items.list();
     const auto count = lst.size();
-    for (int i = 0; i < count; ++i) {
+    for (int i = indexHint; i < count; ++i) {
         if (lst.at(i).item == item) {
             m_items.rotate(count / 2 - i);
             replaceItems();
@@ -218,7 +218,12 @@ void Carousel::mousePressEvent(QGraphicsSceneMouseEvent* event)
     if (event->button() == Qt::MouseButton::LeftButton) {
         if (auto* item = itemAt(event->scenePos(), {})) {
             event->accept();
-            setActiveItem(item);
+            const int bottomVisibleItems = 1 + (items(sceneRect()).size() - 3) / 2;
+            int indexHint = m_items.list().size() / 2 - bottomVisibleItems;
+            if (indexHint < 4) {
+                indexHint = 0;
+            }
+            setActiveItem(item, indexHint);
         }
     }
     QGraphicsScene::mousePressEvent(event);
