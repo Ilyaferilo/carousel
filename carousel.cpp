@@ -1,7 +1,6 @@
 #include "carousel.h"
 #include "qpainter.h"
 #include <QGraphicsSceneWheelEvent>
-#include <QDebug>
 #include <QPropertyAnimation>
 #include <QParallelAnimationGroup>
 #include <qbrush.h>
@@ -12,17 +11,13 @@
 #include <qpoint.h>
 #include <qpropertyanimation.h>
 #include <QKeyEvent>
+#include <qsize.h>
 #include "circle-list.h"
 
 namespace {
 
 constexpr qreal linePenW = 3;
-
-//TODO: перенести это в поля класса
-constexpr int itemWidth{150};
-constexpr int itemHeight{50};
-constexpr int centerItemWidth{itemWidth + 30};
-constexpr int centerItemHeight = itemHeight * 1.1;
+constexpr int hideHeight{50};
 
 QGraphicsEffect* makeBlur()
 {
@@ -33,32 +28,38 @@ QGraphicsEffect* makeBlur()
 
 class CenterItem : public QGraphicsItem
 {
-    // QGraphicsItem interface
+    QSizeF m_size{180, 56};
 
 public:
-    QRectF boundingRect() const override
+    void setSize(QSizeF newSize)
     {
-        return QRectF(-linePenW / 2, -linePenW / 2, centerItemWidth + linePenW, centerItemHeight + linePenW);
+        m_size = newSize;
+        update();
     }
 
-    void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) override
+    QRectF boundingRect() const override
+    {
+        return {-linePenW / 2, -linePenW / 2, m_size.width() + linePenW, m_size.height() + linePenW};
+    }
+
+    void paint(QPainter* painter, const QStyleOptionGraphicsItem* /*option*/, QWidget* /*widget*/) override
     {
         QPen pen(QBrush(Qt::white), linePenW, Qt::SolidLine, Qt::RoundCap, Qt::MiterJoin);
         painter->setRenderHint(QPainter::Antialiasing);
         painter->setPen(pen);
-        painter->drawLine(0, 0, centerItemWidth, 0);
-        painter->drawLine(0, centerItemHeight, centerItemWidth, centerItemHeight);
+        painter->drawLine(0, 0, m_size.width(), 0);
+        painter->drawLine(0, m_size.height(), m_size.width(), m_size.height());
     }
 };
 
 }   // namespace
 
-Carousel::Carousel(QWidget* parent)
+Carousel::Carousel(QObject* parent)
   : QGraphicsScene(parent)
   , m_centerItem(new CenterItem())
   , m_groupAnimation(new QParallelAnimationGroup(this))
-  , m_footer(new QGraphicsRectItem(QRectF(0, 500, 1500, centerItemHeight)))
-  , m_top(new QGraphicsRectItem(QRectF(0, 0, 1500, centerItemHeight)))
+  , m_footer(new QGraphicsRectItem(QRectF(0, 500, 1500, hideHeight)))
+  , m_top(new QGraphicsRectItem(QRectF(0, 0, 1500, hideHeight)))
 {
     m_footer->setPen(Qt::NoPen);
     m_top->setPen(Qt::NoPen);
@@ -95,14 +96,16 @@ void Carousel::setSceneRectangle(QRectF rect)
     const auto oldPos = m_centerItem->pos();
     setSceneRect(rect);
     const auto centerPoint = rect.center();
-    const auto centerX = centerPoint.x() - itemWidth / 2;
-    m_centerItem->setPos(centerPoint.x() - centerItemWidth / 2, centerPoint.y() - centerItemHeight / 2);
+    const auto centerX = centerPoint.x() - m_itemSize.width() / 2;
+    const auto centerItemSize = m_centerItem->boundingRect().size();
+    m_centerItem->setPos(centerPoint.x() - centerItemSize.width() / 2, centerPoint.y() - centerItemSize.height() / 2);
     const auto diffY = m_centerItem->pos().y() - oldPos.y();
     for (const auto& i : qAsConst(m_items.list())) {
-        i.item->setPos(centerX + (itemWidth - itemWidth * i.item->scale()) / 2, i.item->pos().y() + diffY);
+        i.item->setPos(centerX + (m_itemSize.width() - m_itemSize.width() * i.item->scale()) / 2,
+                       i.item->pos().y() + diffY);
     }
-    m_footer->setRect(0, rect.bottom() - centerItemHeight, rect.width() + itemWidth, centerItemHeight * 2);
-    m_top->setRect(0, -centerItemHeight, rect.width() + itemWidth, centerItemHeight * 2);
+    m_top->setRect(-10, -hideHeight / 2, rect.width() + m_itemSize.width(), hideHeight);
+    m_footer->setRect(-10, rect.bottom() - hideHeight / 2, rect.width() + m_itemSize.width(), hideHeight);
 }
 
 void Carousel::setActiveItem(QGraphicsItem* item)
@@ -132,12 +135,13 @@ void Carousel::setActive(int itemNumber)
 void Carousel::add(QGraphicsObject* item)
 {
     addItem(item);
+    item->setFlags(QGraphicsItem::ItemIsFocusable);
 
     auto* moveAnimation = new QPropertyAnimation(item, "pos", this);
     auto* scaleAnimation = new QPropertyAnimation(item, "scale", this);
     auto* opacityAnimation = new QPropertyAnimation(item, "opacity", this);
 
-    auto g = new QParallelAnimationGroup(this);
+    auto* g = new QParallelAnimationGroup(this);
     g->addAnimation(moveAnimation);
     g->addAnimation(scaleAnimation);
     g->addAnimation(opacityAnimation);
@@ -174,7 +178,7 @@ void Carousel::updateAnimation(const Carousel::ItemElement& e, QPointF newPos, q
     e.moveAnimation->setKeyValues({});
     e.moveAnimation->setStartValue(e.item->pos());
 
-    newPos.rx() += (itemWidth - itemWidth * scale) / 2;
+    newPos.rx() += (m_itemSize.width() - m_itemSize.width() * scale) / 2;
     e.moveAnimation->setEndValue(newPos);
 
     e.scaleAnimation->setStartValue(e.item->scale());
@@ -226,11 +230,12 @@ void Carousel::replaceItems()
     if (itemsCount == 0) {
         return;
     }
-    const auto centerX = sceneRect().center().x() - itemWidth / 2;
+    const auto centerX = sceneRect().center().x() - m_itemSize.width() / 2;
     const int activeItem = itemsCount / 2;
-    const QPointF activePoint(centerX, sceneRect().center().y() - centerItemHeight / 2 + linePenW);
+    const QPointF activePoint(centerX, sceneRect().center().y() - m_centerItem->boundingRect().height() / 2 + linePenW);
     updateAnimation(xl[activeItem], activePoint, 1.0);
     const qreal step = 0.1;
+    const auto itemHeight = m_itemSize.height();
     // go up
     {
         qreal scale = 1 - step;
@@ -267,4 +272,20 @@ void Carousel::setMargin(int newMargin)
 int Carousel::margin() const
 {
     return m_margin;
+}
+
+const QSizeF& Carousel::itemSize() const
+{
+    return m_itemSize;
+}
+
+void Carousel::setItemSize(const QSizeF& newItemSize)
+{
+    m_itemSize = newItemSize;
+    auto centerItemSize = newItemSize;
+    centerItemSize.rwidth() += 30;
+    centerItemSize.rheight() += 6;
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-static-cast-downcast)
+    static_cast<CenterItem*>(m_centerItem)->setSize(centerItemSize);
+    replaceItems();
 }

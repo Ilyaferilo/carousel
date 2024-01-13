@@ -1,7 +1,6 @@
 #pragma once
 
 #include "circle-list.h"
-#include <QWidget>
 #include <QGraphicsScene>
 #include <QGraphicsObject>
 #include <qbrush.h>
@@ -13,8 +12,9 @@ class Carousel : public QGraphicsScene
 {
     Q_OBJECT
     Q_PROPERTY(int margin READ margin WRITE setMargin)
+    Q_PROPERTY(QSizeF itemSize READ itemSize WRITE setItemSize)
 public:
-    Carousel(QWidget* parent = nullptr);
+    Carousel(QObject* parent = nullptr);
 
     void setSceneRectangle(QRectF rect);
     void setBackground(QBrush brush);
@@ -28,9 +28,13 @@ public:
 
     void setMargin(int newMargin);
     int margin() const;
+    const QSizeF& itemSize() const;
+    void setItemSize(const QSizeF& newItemSize);
 
 protected:
     void wheelEvent(QGraphicsSceneWheelEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
+    void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
 
 private slots:
     void doRotate(int count);
@@ -55,8 +59,5 @@ private:
     QGraphicsRectItem* m_top;
     int m_rotateQueue{};
 
-    // QGraphicsScene interface
-protected:
-    void keyPressEvent(QKeyEvent* event) override;
-    void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
+    QSizeF m_itemSize{150, 50};
 };
