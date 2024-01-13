@@ -1,4 +1,3 @@
-#include "carousel.h"
 #include "qpainter.h"
 #include <QGraphicsSceneWheelEvent>
 #include <QPropertyAnimation>
@@ -12,7 +11,9 @@
 #include <qpropertyanimation.h>
 #include <QKeyEvent>
 #include <qsize.h>
-#include "circle-list.h"
+
+#include "carousel/carousel.h"
+#include "carousel/circle-list.h"
 
 namespace {
 

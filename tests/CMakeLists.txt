@@ -21,5 +21,5 @@ set(CMAKE_AUTORCC ON)
 file(GLOB_RECURSE SRC ${CMAKE_CURRENT_LIST_DIR}/main.cpp)
 
 add_executable(${PROJECT_NAME} ${SRC} ${Q_RESOURCES})
+target_link_libraries(${PROJECT_NAME} PRIVATE Qt${QT_VERSION_MAJOR}::Test carousel)
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
-target_link_libraries(${PROJECT_NAME} PRIVATE Qt${QT_VERSION_MAJOR}::Test)

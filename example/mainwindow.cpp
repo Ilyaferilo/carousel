@@ -1,11 +1,32 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include "qgraphicsscene.h"
-#include "carousel.h"
 #include <QGraphicsRectItem>
 #include <QTimer>
+#include <qgraphicsitem.h>
+#include <qnamespace.h>
+#include <qpainter.h>
+#include <qpixmap.h>
 
 #include "item.h"
+#include "carousel/carousel.h"
+
+class PixItem
+  : virtual public QGraphicsObject
+  , virtual public QGraphicsPixmapItem
+{
+public:
+    QRectF boundingRect() const
+    {
+        return QGraphicsPixmapItem::boundingRect();
+    }
+
+    void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget = nullptr)
+    {
+        painter->setRenderHint(QPainter::Antialiasing);
+        QGraphicsPixmapItem::paint(painter, option, widget);
+    }
+};
 
 MainWindow::MainWindow(QWidget* parent)
   : QMainWindow(parent)
@@ -15,7 +36,6 @@ MainWindow::MainWindow(QWidget* parent)
     auto scene = new Carousel(this);
     scene->setMargin(20);
     scene->setBackground(QBrush(Qt::black));
-
     ui->graphicsView->setScene(scene);
 }
 
@@ -34,6 +54,7 @@ void MainWindow::resizeEvent(QResizeEvent* event)
 void MainWindow::on_pushButton_clicked()
 {
     static int c;
+    // static_cast<Carousel*>(ui->graphicsView->scene())->setItemSize({450, 150});
     static_cast<Carousel*>(ui->graphicsView->scene())->add(new Item(QString::number(c++)));
 }
 
@@ -45,4 +66,5 @@ void MainWindow::on_pushButton_2_clicked()
 void MainWindow::on_spinBox_valueChanged(int arg1)
 {
     static_cast<Carousel*>(ui->graphicsView->scene())->setActive(arg1);
+    // static_cast<Carousel*>(ui->graphicsView->scene())->setMargin(arg1);
 }

@@ -5,7 +5,8 @@
 #include <qlist.h>
 #include <qtestcase.h>
 
-#include "../circle-list.h"
+#include "carousel/circle-list.h"
+#include "carousel/carousel.h"
 
 class TestCarousel : public QObject
 {
@@ -41,6 +42,12 @@ private slots:
         QCOMPARE(lst.list(), (QList<int>{4, 0, 1, 2, 3}));
         lst.rotate(-2);
         QCOMPARE(lst.list(), (QList<int>{1, 2, 3, 4, 0}));
+    }
+
+    void testCarousel()
+    {
+        Carousel car;
+        car.setActive(0);
     }
 };
 
